@@ -253,7 +253,7 @@ export default function App() {
     };
     const script = document.createElement("script");
     // ⚠️ REEMPLAZA "TU-SHORTNAME" con el shortname de tu cuenta en disqus.com
-    script.src = "https://TU-SHORTNAME.disqus.com/embed.js";
+    script.src = "https://28oct1980.disqus.com/embed.js";
     script.setAttribute("data-timestamp", +new Date());
     document.body.appendChild(script);
   }, [step]);
