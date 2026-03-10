@@ -158,33 +158,85 @@ export default function App() {
     };
   };
 
-  const fetchAI = async (r) => {
-    setAiLoading(true); setAiText("");
-    try {
-      const sexLabel = form.sex === "m" ? "hombre" : "mujer";
-      const prompt = `Eres un asesor de longevidad experto y empático. Analiza este perfil y responde en español con 3 párrafos cálidos y directos (sin encabezados ni asteriscos):
+  const generateAnalysis = (r) => {
+    const nombre = form.name || "viajero";
+    const sexLabel = form.sex === "m" ? "hombre" : "mujer";
+    const edad = Math.floor(r.age);
+    const restantes = r.remaining;
+    const ajuste = r.totalMod;
 
-Perfil: ${form.name || "la persona"}, ${sexLabel}, ${Math.floor(r.age)} años, nacido/a en ${form.country}.
-Esperanza de vida estimada: ${r.adjustedLE} años (base país: ${r.baseLE}). Ajuste por hábitos: ${r.totalMod > 0 ? "+" : ""}${r.totalMod} años. Años restantes: ${r.remaining}.
-Hábitos: tabaco=${OPTS.smoking.find(o => o.val === form.smoking)?.label}, ejercicio=${OPTS.exercise.find(o => o.val === form.exercise)?.label}, dieta=${OPTS.diet.find(o => o.val === form.diet)?.label}, alcohol=${OPTS.alcohol.find(o => o.val === form.alcohol)?.label}, sueño=${OPTS.sleep.find(o => o.val === form.sleep)?.label}, estrés=${OPTS.stress.find(o => o.val === form.stress)?.label}, vida social=${OPTS.social.find(o => o.val === form.social)?.label}, IMC=${form.bmi}, enfermedades crónicas=${form.conditions}.
+    // — Párrafo 1: perfil general —
+    const perfiles = {
+      excelente: ajuste >= 8,
+      bueno:     ajuste >= 3,
+      promedio:  ajuste >= -2,
+      mejorable: ajuste >= -6,
+      critico:   ajuste < -6,
+    };
+    const nivelPerfil = Object.keys(perfiles).find(k => perfiles[k]);
 
-Párrafo 1: Reflexión sobre su perfil específico. Párrafo 2: Las 2-3 cosas más impactantes que puede cambiar. Párrafo 3: Mensaje motivador sobre vivir bien los años que tiene.`;
+    const p1_opciones = {
+      excelente: `${nombre}, con ${edad} años y un perfil que supera ampliamente la media de ${form.country}, tus hábitos de vida son notablemente sólidos. Has ganado ${ajuste} años sobre la esperanza de vida base de tu país — algo que solo logra una minoría. La ciencia de la longevidad confirma que perfiles como el tuyo no solo viven más, sino con mayor calidad de vida en las últimas décadas.`,
+      bueno:     `${nombre}, a tus ${edad} años presentas un perfil de salud por encima del promedio en ${form.country}. Has sumado ${ajuste} años a tu esperanza de vida base gracias a decisiones consistentes. No eres perfecto, pero vas por buen camino — y en longevidad, la constancia vale más que la perfección ocasional.`,
+      promedio:  `${nombre}, a tus ${edad} años tu perfil se sitúa cerca de la media estadística de ${form.country}. Ni en zona de riesgo ni destacando positivamente, lo que significa que tienes un margen real de mejora. Cambios moderados en tus hábitos pueden mover significativamente la aguja: incluso 3-4 años adicionales de vida saludable son completamente alcanzables.`,
+      mejorable: `${nombre}, a tus ${edad} años tu perfil muestra algunos factores que están restando años a tu esperanza de vida base en ${form.country}. Un ajuste de ${ajuste} años es una señal de alerta, pero también una oportunidad concreta. La buena noticia: el cuerpo humano responde positivamente a cambios de hábito incluso en edades avanzadas — nunca es tarde para recuperar terreno.`,
+      critico:   `${nombre}, a tus ${edad} años tu perfil presenta varios factores de riesgo acumulados que están impactando seriamente tu esperanza de vida. Una diferencia de ${ajuste} años respecto a la base de ${form.country} es significativa. Esta estimación no es un veredicto — es una llamada de atención. Cambios ahora, incluso pequeños y graduales, pueden revertir parte de este impacto de forma real y medible.`,
+    };
 
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }]
-        })
-      });
-      const data = await res.json();
-      setAiText(data.content?.[0]?.text || "No se pudo generar el análisis.");
-    } catch {
-      setAiText("Error al conectar con el análisis de IA. Por favor verifica tu conexión.");
-    }
-    setAiLoading(false);
+    // — Párrafo 2: recomendaciones específicas —
+    const recomendaciones = [];
+
+    if (form.smoking === "heavy") recomendaciones.push("Dejar de fumar es el cambio con mayor impacto posible en tu longevidad — hasta 10 años recuperables según la OMS. No hay ninguna otra intervención que se le acerque.");
+    else if (form.smoking === "light") recomendaciones.push("Aunque fumas poco, el tabaco sigue siendo el factor más dañino en tu perfil. Dejarlo por completo podría devolverte 5 años de esperanza de vida.");
+    else if (form.smoking === "ex") recomendaciones.push("Haber dejado de fumar ya fue tu mejor decisión de salud. Tu riesgo cardiovascular continúa reduciéndose con cada año que pasa.");
+
+    if (form.exercise === "sedentary") recomendaciones.push("La inactividad física es el segundo mayor factor de riesgo modificable. 30 minutos de caminata diaria reducen la mortalidad general en un 35% — no hace falta un gimnasio ni ser atleta.");
+    else if (form.exercise === "moderate") recomendaciones.push("Tu nivel de actividad es un buen punto de partida. Aumentar a ejercicio moderado-intenso 4 días por semana podría sumar hasta 3 años adicionales a tu estimación.");
+    else if (form.exercise === "active" || form.exercise === "athlete") recomendaciones.push("Tu nivel de actividad física es uno de tus activos más valiosos. Mantenerlo con constancia a lo largo de los años es lo más importante.");
+
+    if (form.stress === "extreme") recomendaciones.push("El estrés crónico extremo eleva el cortisol de forma sostenida, acelerando el envejecimiento celular. Técnicas de regulación — meditación, respiración, terapia — no son opcionales para tu perfil: son medicina.");
+    else if (form.stress === "high") recomendaciones.push("Tu nivel de estrés alto es un factor silencioso pero real. Incorporar aunque sea 10 minutos diarios de desconexión activa tiene efectos medibles en marcadores de inflamación y envejecimiento.");
+
+    if (form.diet === "poor") recomendaciones.push("Una dieta deficiente afecta desde el sistema cardiovascular hasta la función cognitiva. Pequeños cambios sostenidos — más vegetales, menos ultraprocesados — tienen mayor impacto que dietas estrictas cortas.");
+    else if (form.diet === "average") recomendaciones.push("Mejorar tu dieta de regular a buena es uno de los cambios más accesibles y con mejor relación esfuerzo-resultado. La dieta mediterránea es la más respaldada científicamente para la longevidad.");
+
+    if (form.bmi >= 30) recomendaciones.push("La obesidad multiplica el riesgo de enfermedades cardiovasculares, diabetes tipo 2 y ciertos cánceres. Una reducción del 5-10% del peso corporal ya produce mejoras clínicamente significativas.");
+    else if (form.bmi >= 25) recomendaciones.push("El sobrepeso leve tiene un impacto moderado pero acumulativo. Combinado con ejercicio regular, pequeños ajustes en la alimentación pueden normalizarlo sin dietas extremas.");
+
+    if (form.sleep === "low") recomendaciones.push("Dormir menos de 6 horas cronifica la inflamación y deteriora la regulación metabólica. La privación de sueño sostenida es un factor de envejecimiento acelerado con evidencia científica sólida.");
+
+    if (form.social === "isolated") recomendaciones.push("El aislamiento social tiene un impacto en longevidad comparable al tabaquismo según estudios de Harvard. Las conexiones sociales genuinas — no la cantidad sino la calidad — son un factor protector potente.");
+
+    if (form.alcohol === "heavy") recomendaciones.push("El consumo frecuente de alcohol daña el hígado, eleva el riesgo cardiovascular y afecta la calidad del sueño. Reducirlo a ocasional ya produce mejoras en menos de 4 semanas.");
+
+    if (Number(form.conditions) >= 2) recomendaciones.push("Con varias condiciones crónicas diagnosticadas, el seguimiento médico regular y la adherencia al tratamiento son los factores que más pueden extender y mejorar tu calidad de vida.");
+
+    // Seleccionar las 2-3 más relevantes
+    const topRecs = recomendaciones.slice(0, 3);
+    const p2 = topRecs.length > 0
+      ? `Las áreas donde un cambio tendría mayor impacto en tu caso: ${topRecs.join(" Además, ")}`
+      : `Tu perfil no muestra factores de riesgo críticos. Lo más importante ahora es mantener consistencia: los estudios muestran que los hábitos saludables sostenidos durante décadas tienen un efecto compuesto en longevidad similar al interés bancario.`;
+
+    // — Párrafo 3: mensaje motivador —
+    const mensajes_finales = [
+      `${restantes} años estadísticos es tiempo suficiente para construir lo que quieras construir, ver lo que quieras ver y ser quien quieras ser. La esperanza de vida es una media — pero tú eres un individuo con capacidad real de influir en ese número. Cada elección positiva que hagas hoy no solo suma tiempo: mejora la calidad de cada uno de esos años.`,
+      `La investigación sobre longevidad tiene un hallazgo consistente: las personas que llegan a los 90 y 100 años no suelen tener vidas perfectas, sino vidas con propósito, conexión y movimiento. ${nombre}, tienes delante ${restantes} años para invertir en exactamente eso.`,
+      `El momento más impactante para cambiar un hábito siempre es ahora — no mañana, no el lunes. Cada año que pasa con un hábito dañino tiene un costo compuesto, y cada año con un hábito positivo tiene un beneficio compuesto. ${nombre}, tus próximos ${restantes} años pueden ser muy distintos a los anteriores si decides que así sea.`,
+      `Los datos son datos, pero la vida es tuya. Usa esta estimación no como un destino fijo, sino como un mapa con margen de maniobra. Con ${restantes} años por delante, el mejor momento para invertir en tu salud es exactamente ahora.`,
+    ];
+    const p3 = mensajes_finales[Math.floor(r.adjustedLE) % mensajes_finales.length];
+
+    return `${p1_opciones[nivelPerfil]}\n\n${p2}\n\n${p3}`;
+  };
+
+  const fetchAI = (r) => {
+    setAiLoading(true);
+    setAiText("");
+    // Pequeña pausa para que se sienta como procesamiento
+    setTimeout(() => {
+      setAiText(generateAnalysis(r));
+      setAiLoading(false);
+    }, 900);
   };
 
   const handleCalc = () => {
