@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const STYLE = `
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -73,7 +73,27 @@ const STYLE = `
   .ai-dot:nth-child(2) { animation-delay: 0.2s; } .ai-dot:nth-child(3) { animation-delay: 0.4s; }
   @keyframes pulse { 0%,80%,100%{opacity:0.2;transform:scale(0.8)}40%{opacity:1;transform:scale(1)} }
   .disclaimer { text-align: center; margin-top: 20px; font-size: 0.72rem; color: #4a4030; line-height: 1.6; }
-  @media(max-width:500px){ .card{padding:22px 16px} .two-col{grid-template-columns:1fr} .stats-grid{grid-template-columns:1fr 1fr} .result-age{font-size:4rem} .header h1{font-size:2rem} }
+
+  /* COMPARTIR */
+  .share-section { margin-top: 28px; border-top: 1px solid rgba(212,168,83,0.1); padding-top: 24px; }
+  .share-title { font-size: 0.72rem; color: #6a5a40; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 14px; text-align: center; }
+  .share-buttons { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .share-btn { display: flex; align-items: center; gap: 7px; padding: 10px 16px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: #c8b890; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500; text-decoration: none; transition: all 0.2s; }
+  .share-btn:hover { transform: translateY(-1px); }
+  .share-btn.whatsapp:hover { background: rgba(37,211,102,0.15); border-color: rgba(37,211,102,0.4); color: #25d366; }
+  .share-btn.xtwitter:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); color: #fff; }
+  .share-btn.facebook:hover { background: rgba(66,103,178,0.15); border-color: rgba(66,103,178,0.4); color: #6080d0; }
+  .share-btn.copy:hover { background: rgba(212,168,83,0.15); border-color: rgba(212,168,83,0.4); color: #d4a853; }
+  .share-btn.copied { background: rgba(125,204,136,0.15); border-color: rgba(125,204,136,0.4); color: #7dcc88; }
+  .share-btn.download:hover { background: rgba(212,168,83,0.15); border-color: rgba(212,168,83,0.4); color: #d4a853; }
+  .share-hint { text-align: center; font-size: 0.7rem; color: #4a4030; margin-top: 10px; }
+
+  /* COMENTARIOS */
+  .comments-section { margin-top: 32px; background: rgba(255,255,255,0.02); border: 1px solid rgba(212,168,83,0.1); border-radius: 16px; padding: 24px; }
+  .comments-title { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; color: #d4a853; margin-bottom: 4px; }
+  .comments-subtitle { font-size: 0.78rem; color: #5a5040; margin-bottom: 20px; }
+
+  @media(max-width:500px){ .card{padding:22px 16px} .two-col{grid-template-columns:1fr} .stats-grid{grid-template-columns:1fr 1fr} .result-age{font-size:4rem} .header h1{font-size:2rem} .share-btn{padding:9px 11px; font-size:0.78rem} }
 `;
 
 const COUNTRIES = {
@@ -129,6 +149,114 @@ export default function App() {
   const [aiText, setAiText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [barW, setBarW] = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  // URL de tu sitio — cámbiala cuando tengas tu dominio en Vercel
+  const SITE_URL = typeof window !== "undefined" ? window.location.href : "https://tu-app.vercel.app";
+
+  // — Compartir en redes —
+  const shareText = (r) =>
+    `⏳ Descubrí que mi esperanza de vida estimada es ${r.adjustedLE} años (${r.remaining} años por vivir). ¿Cuál es la tuya? Descúbrelo en`;
+
+  const handleShareWhatsApp = (r) =>
+    window.open(`https://wa.me/?text=${encodeURIComponent(shareText(r) + " " + SITE_URL)}`, "_blank");
+
+  const handleShareX = (r) =>
+    window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(shareText(r))}&url=${encodeURIComponent(SITE_URL)}`, "_blank");
+
+  const handleShareFacebook = () =>
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(SITE_URL)}`, "_blank");
+
+  const handleCopyLink = async () => {
+    try { await navigator.clipboard.writeText(SITE_URL); }
+    catch { /* fallback silencioso */ }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // — Generar imagen descargable con Canvas —
+  const handleDownloadImage = (r) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 900; canvas.height = 500;
+    const ctx = canvas.getContext("2d");
+
+    // Fondo
+    const bg = ctx.createLinearGradient(0, 0, 900, 500);
+    bg.addColorStop(0, "#0d1a2e"); bg.addColorStop(1, "#07080f");
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, 900, 500);
+
+    // Borde dorado
+    ctx.strokeStyle = "rgba(212,168,83,0.4)"; ctx.lineWidth = 1.5;
+    ctx.strokeRect(20, 20, 860, 460);
+
+    // Línea decorativa superior
+    const lineGrad = ctx.createLinearGradient(60, 0, 840, 0);
+    lineGrad.addColorStop(0, "transparent"); lineGrad.addColorStop(0.3, "#d4a853");
+    lineGrad.addColorStop(0.7, "#d4a853"); lineGrad.addColorStop(1, "transparent");
+    ctx.strokeStyle = lineGrad; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(60, 60); ctx.lineTo(840, 60); ctx.stroke();
+
+    // Título
+    ctx.fillStyle = "#6a5a40"; ctx.font = "500 13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("TU HORIZONTE DE VIDA · ESTIMACIÓN OMS 2024", 450, 100);
+
+    // Nombre
+    ctx.fillStyle = "#f0e4cc"; ctx.font = "300 26px Georgia, serif";
+    ctx.fillText(form.name || "Viajero", 450, 145);
+
+    // Número grande
+    ctx.fillStyle = "#d4a853"; ctx.font = "200 130px Georgia, serif";
+    ctx.fillText(r.adjustedLE, 450, 290);
+
+    // Label bajo el número
+    ctx.fillStyle = "#5a5040"; ctx.font = "400 14px sans-serif";
+    ctx.fillText("AÑOS DE ESPERANZA DE VIDA ESTIMADA", 450, 320);
+
+    // Stats secundarios
+    ctx.fillStyle = "rgba(212,168,83,0.15)";
+    ctx.roundRect(120, 345, 200, 72, 10); ctx.fill();
+    ctx.roundRect(350, 345, 200, 72, 10); ctx.fill();
+    ctx.roundRect(580, 345, 200, 72, 10); ctx.fill();
+
+    const drawStat = (x, val, label) => {
+      ctx.fillStyle = "#d4a853"; ctx.font = "300 26px Georgia, serif";
+      ctx.fillText(val, x, 385);
+      ctx.fillStyle = "#6a6050"; ctx.font = "400 11px sans-serif";
+      ctx.fillText(label, x, 403);
+    };
+    drawStat(220, Math.floor(r.age) + " años", "EDAD ACTUAL");
+    drawStat(450, r.remaining + " años", "POR VIVIR");
+    const sign = r.totalMod >= 0 ? "+" : "";
+    drawStat(680, sign + r.totalMod + " años", "AJUSTE HÁBITOS");
+
+    // URL del sitio
+    ctx.fillStyle = "#3a3020"; ctx.font = "400 12px sans-serif";
+    ctx.fillText(SITE_URL, 450, 455);
+
+    // Descargar
+    const link = document.createElement("a");
+    link.download = `horizonte-de-vida-${form.name || "resultado"}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
+
+  // — Cargar Disqus —
+  useEffect(() => {
+    if (step !== 3) return;
+    // Limpia instancia previa si el usuario recalculó
+    if (window.DISQUS) { window.DISQUS.reset({ reload: true }); return; }
+    window.disqus_config = function () {
+      this.page.url = SITE_URL;
+      this.page.identifier = "horizonte-de-vida-main";
+      this.language = "es";
+    };
+    const script = document.createElement("script");
+    // ⚠️ REEMPLAZA "TU-SHORTNAME" con el shortname de tu cuenta en disqus.com
+    script.src = "https://TU-SHORTNAME.disqus.com/embed.js";
+    script.setAttribute("data-timestamp", +new Date());
+    document.body.appendChild(script);
+  }, [step]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const getMod = (key) => OPTS[key]?.find(o => o.val === form[key])?.mod ?? 0;
@@ -459,6 +587,42 @@ export default function App() {
                 Esta estimación es estadística, no médica. Basada en datos OMS 2024 y literatura científica sobre longevidad.<br />
                 Consulta siempre a un profesional de la salud para evaluaciones personalizadas.
               </div>
+
+              {/* COMPARTIR */}
+              <div className="share-section">
+                <div className="share-title">✦ Comparte tu resultado</div>
+                <div className="share-buttons">
+                  <button className="share-btn whatsapp" onClick={() => handleShareWhatsApp(results)}>
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.557 4.126 1.533 5.862L.057 23.286a.75.75 0 00.92.92l5.444-1.476A11.953 11.953 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.726 9.726 0 01-5.003-1.381l-.36-.214-3.732 1.012 1.012-3.712-.234-.373A9.718 9.718 0 012.25 12C2.25 6.615 6.615 2.25 12 2.25S21.75 6.615 21.75 12 17.385 21.75 12 21.75z"/></svg>
+                    WhatsApp
+                  </button>
+                  <button className="share-btn xtwitter" onClick={() => handleShareX(results)}>
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                    X (Twitter)
+                  </button>
+                  <button className="share-btn facebook" onClick={handleShareFacebook}>
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                    Facebook
+                  </button>
+                  <button className={`share-btn copy${copied ? " copied" : ""}`} onClick={handleCopyLink}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                    {copied ? "¡Copiado!" : "Copiar enlace"}
+                  </button>
+                  <button className="share-btn download" onClick={() => handleDownloadImage(results)}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Descargar imagen
+                  </button>
+                </div>
+                <div className="share-hint">La imagen incluye tu resultado listo para publicar en Instagram, stories o donde quieras.</div>
+              </div>
+
+              {/* COMENTARIOS DISQUS */}
+              <div className="comments-section">
+                <div className="comments-title">💬 Comentarios</div>
+                <div className="comments-subtitle">Comparte tu experiencia · puedes comentar como invitado o con tu cuenta de Google, Facebook o X</div>
+                <div id="disqus_thread"></div>
+              </div>
+
               <div className="btn-row" style={{ marginTop: "20px" }}>
                 <button className="btn-back" style={{ flex: 1 }}
                   onClick={() => { setStep(0); setResults(null); setBarW(0); setAiText(""); }}>
